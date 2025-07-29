@@ -8,10 +8,10 @@ const checkDns = (url) => {
     return new Promise((resolve) => {
         dns.lookup(url, (err, address, family) => {
             if (err) {
-                console.error(red('[X] DNS problem:', err.message));
+                console.error(red(`[X] DNS problem: ${err.message} URL: ${url}`));
                 resolve();
             } else {
-                console.log(green(`[V] DNS OK: ${address} (IPv${family})`));
+                console.log(green(`[V] DNS OK: ${address} (IPv${family}) URL: ${url}`));
                 resolve();
             }
         });
