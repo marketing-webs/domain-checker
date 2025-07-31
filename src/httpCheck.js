@@ -53,11 +53,11 @@ const checkPage = async (url, withHttps) => {
         const time = new Date().getTime() - timeUTCBefore
 
         if (lastCode === 404) {
-            return console.info(yellow(`[V] status ${statuses} ${url} - ${time}ms Strona nie została znaleziona.`));
+            return console.info(yellow(`[V] status ${statuses} ${url} - Strona nie została znaleziona.`));
         }
 
         if (lastCode === 410) {
-            return console.info(yellow(`[V] status ${statuses} ${url} - ${time}ms Strona na parkingu`));
+            return console.info(yellow(`[V] status ${statuses} ${url} - Strona na parkingu`));
         }
 
         if (chain.find((status) => status.statusCode === 301 && !withHttps)) {
@@ -65,7 +65,7 @@ const checkPage = async (url, withHttps) => {
         }
 
         if (!withHttps) {
-            return console.info(yellow(`[V] status ${statuses} ${url} - ${time}ms Brak konfiguracji HTTPS na stronie`));
+            return console.info(yellow(`[V] status ${statuses} ${url} - Brak konfiguracji HTTPS na stronie. ${time}ms`));
         }
 
         console.info(green(`[V] status ${statuses} ${url} - ${time}ms`));

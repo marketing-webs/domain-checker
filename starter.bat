@@ -1,6 +1,6 @@
 @echo off
 
-@echo loading..
+@echo loading...
 
 if not exist node_modules (
     call npm install
@@ -15,9 +15,8 @@ if not "%LOCAL%" == "%REMOTE%" (
     git pull
     call npm install
 )
+:: check for updates
 
 cls
 
 call npm start
-
-pause
