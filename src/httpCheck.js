@@ -2,7 +2,7 @@ const axios = require('axios');
 const { getDomains } = require('./utils/getDomainsFromTxt');
 const { cmdColor } = require('./utils/cmdColor');
 
-const { green, red } = cmdColor
+const { green, red, yellow } = cmdColor
 
 const checkRedirectChain = async (url) => {
     const chain = [];
@@ -39,23 +39,35 @@ const checkRedirectChain = async (url) => {
     }
 };
 
-const checkPage = async (url) => {
+const checkPage = async (url, withHttps) => {
     try {
         const { chain, error } = await checkRedirectChain(url);
 
         if (!chain || chain.length === 0 || error) {
-            console.log(red(`[X] Brak odpowiedzi z ${url}${error ? ` | ${error.message}` : ''}`));
+            console.info(red(`[X] Brak odpowiedzi z ${url}${error ? ` - ${error.message}` : ''}`));
             return;
         }
 
-        const statuses = chain.map(r => r.statusCode).join(' ➞  ');
+        const statuses = chain.map(response => response.statusCode).join(' >> ');
+        const lastCode = chain[chain.length - 1].statusCode
 
-        if (statuses.split(' ').includes('200')) {
-            console.log(green(`[V] status ${statuses} ${url}`));
-        } else {
-            console.log(red(`[V] status ${statuses} ${url} - brak odpowiedzi 200`));
+        if (lastCode === 404) {
+            return console.info(yellow(`[V] status ${statuses} ${url} - Strona nie została znaleziona.`));
         }
 
+        if (lastCode === 410) {
+            return console.info(yellow(`[V] status ${statuses} ${url} - Strona na parkingu`));
+        }
+
+        if (chain.find((status) => status.statusCode === 301 && !withHttps)) {
+            return console.info(green(`[V] status ${statuses} ${url}`));
+        }
+
+        if (!withHttps) {
+            return console.info(yellow(`[V] status ${statuses} ${url} - Brak konfiguracji HTTPS na stronie`));
+        }
+
+        console.info(green(`[V] status ${statuses} ${url}`));
     } catch (error) {
         console.error(red(`[X] Błąd przy ${url}: ${error.message}`));
     }
@@ -65,21 +77,15 @@ const httpCheck = async (withHttps) => {
     const domains = await getDomains() || [];
 
     for (let domain of domains) {
+        domain = domain.replace('https://', '').replace('http://', '');
+
         if (withHttps) {
-            if (domain.startsWith('http://')) {
-                domain = domain.replace('http://', 'https://');
-            } else if (!domain.startsWith('https://')) {
-                domain = 'https://' + domain;
-            }
+            domain = 'https://' + domain;
         } else {
-            if (domain.startsWith('https://')) {
-                domain = domain.replace('https://', 'http://');
-            } else if (!domain.startsWith('http://')) {
-                domain = 'http://' + domain;
-            }
+            domain = 'http://' + domain;
         }
 
-        await checkPage(domain);
+        await checkPage(domain, withHttps);
     }
 
     return true;

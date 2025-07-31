@@ -1,14 +1,15 @@
-function red(text) {
-    return `\x1b[31m${text}\x1b[0m`;
-}
+const getColor = (text, colorCode) => {
+    return `\x1b[${colorCode}m${text}\x1b[0m`;
+};
 
-function green(text) {
-    return `\x1b[32m${text}\x1b[0m`;
-}
+const red = (text) => getColor(text, 31);
+const green = (text) => getColor(text, 32);
+const yellow = (text) => getColor(text, 33);
 
 const cmdColor = {
     green,
-    red
+    red,
+    yellow
 }
 
 module.exports.cmdColor = cmdColor

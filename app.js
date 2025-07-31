@@ -4,6 +4,7 @@ const { dnsCheck } = require('./src/dnsCheck');
 
 const fs = require('fs');
 const path = require('path');
+const { ghPagesCheck } = require('./src/ghPagesCheck');
 
 const filePath = path.join(process.cwd(), 'domains.txt');
 
@@ -32,11 +33,12 @@ const rl = readline.createInterface({
 });
 
 const showMenu = () => {
-    console.log('\nWybierz opcję:');
-    console.log('1. Sprawdź stronę HTTP');
-    console.log('2. Sprawdź stronę HTTP/s');
-    console.log('3. Sprawdź DNS domen');
-    console.log('0. Wyjdź');
+    console.info('\nWybierz opcję:');
+    console.info('1. Sprawdź stronę HTTP');
+    console.info('2. Sprawdź stronę HTTP/s');
+    console.info('3. Sprawdź DNS domen');
+    // console.info('4. Sprawdź serwer gh-pages');
+    console.info('0. Wyjdź');
 
     rl.question('> ', async (answer) => {
         if (answer === '1') {
@@ -54,13 +56,18 @@ const showMenu = () => {
             return showMenu();
         }
 
+        // if (answer === '4') {
+        //     await ghPagesCheck();
+        //     return showMenu();
+        // }
+
         if (answer === '0') {
-            console.log('👋 Zakończono.');
+            console.info('👋 Zakończono.');
             rl.close();
             return;
         }
 
-        console.log('[X] Nieznana opcja');
+        console.info('[X] Nieznana opcja');
         showMenu();
     });
 };

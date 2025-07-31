@@ -1,3 +1,3 @@
 const pause = (ms) => new Promise(r => setTimeout(r, ms));
 
-module.exports = pause;
+module.exports.pause = pause;
