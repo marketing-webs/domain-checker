@@ -14,7 +14,6 @@ const checkRedirectChain = async (url) => {
             const response = await axios.get(currentUrl, {
                 maxRedirects: 0,
                 validateStatus: () => true,
-                timeout: 5000,
                 headers: {
                     'User-Agent': 'Mozilla/5.0',
                 }
@@ -41,6 +40,7 @@ const checkRedirectChain = async (url) => {
 
 const checkPage = async (url, withHttps) => {
     try {
+        const timeUTCBefore = new Date().getTime()
         const { chain, error } = await checkRedirectChain(url);
 
         if (!chain || chain.length === 0 || error) {
@@ -50,26 +50,27 @@ const checkPage = async (url, withHttps) => {
 
         const statuses = chain.map(response => response.statusCode).join(' >> ');
         const lastCode = chain[chain.length - 1].statusCode
+        const time = new Date().getTime() - timeUTCBefore
 
         if (lastCode === 404) {
-            return console.info(yellow(`[V] status ${statuses} ${url} - Strona nie została znaleziona.`));
+            return console.info(yellow(`[V] status ${statuses} ${url} - ${time}ms Strona nie została znaleziona.`));
         }
 
         if (lastCode === 410) {
-            return console.info(yellow(`[V] status ${statuses} ${url} - Strona na parkingu`));
+            return console.info(yellow(`[V] status ${statuses} ${url} - ${time}ms Strona na parkingu`));
         }
 
         if (chain.find((status) => status.statusCode === 301 && !withHttps)) {
-            return console.info(green(`[V] status ${statuses} ${url}`));
+            return console.info(green(`[V] status ${statuses} ${url} - ${time}ms`));
         }
 
         if (!withHttps) {
-            return console.info(yellow(`[V] status ${statuses} ${url} - Brak konfiguracji HTTPS na stronie`));
+            return console.info(yellow(`[V] status ${statuses} ${url} - ${time}ms Brak konfiguracji HTTPS na stronie`));
         }
 
-        console.info(green(`[V] status ${statuses} ${url}`));
+        console.info(green(`[V] status ${statuses} ${url} - ${time}ms`));
     } catch (error) {
-        console.error(red(`[X] Błąd przy ${url}: ${error.message}`));
+        console.error(red(`[X] Błąd przy ${url} - ${time}ms ${error.message}`));
     }
 };
 

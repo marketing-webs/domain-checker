@@ -6,8 +6,8 @@ const { pause } = require('./utils/async');
 const { green, red, yellow } = cmdColor
 
 const config = {
-    timeout: 3000,
-    retries: 3
+    timeout: 2000,
+    retries: 2
 };
 
 const checkDns = async (url) => {
@@ -18,11 +18,35 @@ const checkDns = async (url) => {
         url
     }
 
+    const getErrorMsg = (errorMsg = '') => {
+        const errors = {
+            ENOTFOUND: "Domain does not exist (no such name in DNS)",
+            ENODATA: "No A / AAAA record (domain exists but has no IP)",
+            ETIMEOUT: "DNS server response took too long (timeout)",
+            EAI_AGAIN: "Temporary DNS resolver issue (try again)",
+            ECONNREFUSED: "Connection refused (server is up but nothing is listening on the port)",
+            ECONNRESET: "Connection was reset by the host",
+            EHOSTUNREACH: "Host unreachable (e.g. routing or network problem)",
+            ENETUNREACH: "Network unreachable",
+            EADDRNOTAVAIL: "Local IP address unavailable (rare)",
+            EPIPE: "Broken connection (Broken pipe)",
+            UNKNOWN: "Unknown DNS or network error",
+        };
+
+        for (const key of Object.keys(errors)) {
+            if (errorMsg.includes(key)) {
+                return `${errorMsg} - ${errors[key]}`;
+            }
+        }
+
+        return errorMsg;
+    };
+
     const getDNS = async () => {
         await new Promise((resolve) => {
             dns.lookup(url, (err, address, family) => {
                 if (err) {
-                    dnsInfo.message = err.message
+                    dnsInfo.message = getErrorMsg(err.message)
                     dnsInfo.status = 'error'
                     resolve();
                 } else {
@@ -36,9 +60,10 @@ const checkDns = async (url) => {
         return dnsInfo
     }
 
-    for (let attempt = 0; attempt < config.retries; attempt++) {
-        const isLastAttempt = attempt === config.retries + 1;
-        const utcTimeStart = new Date().getTime()
+    const utcTimeStart = new Date().getTime()
+
+    for (let attempt = 0; attempt <= config.retries; attempt++) {
+        const isLastAttempt = attempt === config.retries;
 
         if (isLastAttempt) {
             result = await getDNS(url);
@@ -50,24 +75,27 @@ const checkDns = async (url) => {
         }
 
         if (result) {
+            dnsInfo.retries = attempt
             dnsInfo.timeout = new Date().getTime() - utcTimeStart
             break;
         }
     }
 
-    if (dnsInfo.retries === config.retries + 1) {
+    if (dnsInfo.retries === config.retries && dnsInfo.timeout >= (config.timeout / config.retries)) {
         dnsInfo.status = "warn"
     }
 
     if (dnsInfo.status === "error") {
-        return console.error(red(`[X] DNS error for ${url}: ${dnsInfo.message}`));
+        return console.error(red(`[X] DNS error: ${url} - ${dnsInfo.message}`));
     }
+
+    const successMsg = `[V] DNS OK: ${dnsInfo.message}${dnsInfo.retries ? ` retries: ${dnsInfo.retries} |` : ''} time: ${dnsInfo.timeout}ms ${url}`
 
     if (dnsInfo.status === "warn") {
-        return console.info(yellow(`[V] DNS OK for ${dnsInfo.message} Retries: ${dnsInfo.retries} ${url} ${dnsInfo.timeout}ms`));
+        return console.info(yellow(`${successMsg} - timed out`));
     }
 
-    console.info(green(`[V] DNS OK for ${dnsInfo.message}${dnsInfo.retries ? ` Retries: ${dnsInfo.retries} |` : ''} time: ${dnsInfo.timeout}ms ${url}`));
+    console.info(green(successMsg));
 };
 
 const dnsCheck = async () => {
