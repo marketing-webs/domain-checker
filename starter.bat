@@ -7,6 +7,7 @@ if not exist node_modules (
 )
 
 :: check for updates
+set BRANCH=main
 for /f %%a in ('git ls-remote origin refs/heads/%BRANCH%') do set REMOTE=%%a
 for /f %%a in ('git rev-parse %BRANCH%') do set LOCAL=%%a
 
