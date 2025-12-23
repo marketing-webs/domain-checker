@@ -1,8 +1,10 @@
 const axios = require('axios');
-const { getDomains } = require('./utils/getDomainsFromTxt');
-const { cmdColor } = require('./utils/cmdColor');
 
-const { green, red, yellow } = cmdColor
+const { getDomains } = require('./services/getDomainsFromTxt');
+const { processInBatches } = require('./services/batchProcessor');
+
+const { logger } = require('./utils/logger');
+const { getErrorFromMessage } = require('./utils/errorUtils');
 
 const checkRedirectChain = async (url) => {
     const chain = [];
@@ -38,13 +40,14 @@ const checkRedirectChain = async (url) => {
     }
 };
 
-const checkPage = async (url, withHttps) => {
+const checkPage = async (url, withHttps, index) => {
     try {
         const timeUTCBefore = new Date().getTime()
+        const domain = withHttps ? url.replace('https://', '') : url.replace('http://', '');;
         const { chain, error } = await checkRedirectChain(url);
 
         if (!chain || chain.length === 0 || error) {
-            console.info(red(`[X] Brak odpowiedzi z ${url}${error ? ` - ${error.message}` : ''}`));
+            logger(`Brak odpowiedzi z ${domain}${error ? ` - ${error.message} - ${getErrorFromMessage(error.message)}` : ''}`, 'error');
             return;
         }
 
@@ -53,32 +56,32 @@ const checkPage = async (url, withHttps) => {
         const time = new Date().getTime() - timeUTCBefore
 
         if (lastCode === 404) {
-            return console.info(yellow(`[V] status ${statuses} ${url} - Strona nie została znaleziona.`));
+            return logger(`${statuses} ${domain} - Strona nie została znaleziona.`, 'warn');
         }
 
         if (lastCode === 410) {
-            return console.info(yellow(`[V] status ${statuses} ${url} - Strona na parkingu`));
+            return logger(`${statuses} ${domain} - Strona na parkingu`, 'warn');
         }
 
         if (chain.find((status) => status.statusCode === 301 && !withHttps)) {
-            return console.info(green(`[V] status ${statuses} ${url} - ${time}ms`));
+            return logger(`${statuses} ${domain} - ${time}ms`, 'success');
         }
 
         if (!withHttps) {
-            return console.info(yellow(`[V] status ${statuses} ${url} - Brak konfiguracji HTTPS na stronie. ${time}ms`));
+            return logger(`${statuses} ${domain} - Brak konfiguracji "Enforce HTTPS". ${time}ms`, 'warn');
         }
 
-        console.info(green(`[V] status ${statuses} ${url} - ${time}ms`));
+        logger(`[${index || 0}] ${statuses} ${domain} - ${time}ms`, 'success');
     } catch (error) {
-        console.error(red(`[X] Błąd przy ${url} - ${time}ms ${error.message}`));
+        logger(`Błąd przy ${url} - ${time}ms ${error.message}`, 'error');
     }
 };
 
 const httpCheck = async (withHttps) => {
     const domains = await getDomains() || [];
 
-    for (let domain of domains) {
-        domain = domain.replace('https://', '').replace('http://', '');
+    const checkDomain = async (domain, index) => {
+        domain = domain.replace(/^https?:\/\//, '');
 
         if (withHttps) {
             domain = 'https://' + domain;
@@ -86,10 +89,10 @@ const httpCheck = async (withHttps) => {
             domain = 'http://' + domain;
         }
 
-        await checkPage(domain, withHttps);
-    }
+        await checkPage(domain, withHttps, index);
+    };
 
-    return true;
+    await processInBatches(domains, checkDomain, 50);
 };
 
 module.exports.httpCheck = httpCheck;
